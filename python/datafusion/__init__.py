@@ -21,6 +21,10 @@ This is a Python library that binds to Apache Arrow in-memory query engine DataF
 See https://datafusion.apache.org/python for more information.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 try:
     import importlib.metadata as importlib_metadata
 except ImportError:
@@ -28,7 +32,7 @@ except ImportError:
 
 from datafusion.col import col, column
 
-from . import functions, object_store, substrait, unparser
+from . import catalog, functions, object_store, substrait, unparser
 
 # The following imports are okay to remain as opaque to the user.
 from ._internal import Config
@@ -42,12 +46,12 @@ from .context import (
     SessionContext,
     SQLOptions,
 )
-from .dataframe import DataFrame
+from .dataframe import DataFrame, ParquetColumnOptions, ParquetWriterOptions
+from .dataframe_formatter import configure_formatter
 from .expr import (
     Expr,
     WindowFrame,
 )
-from .html_formatter import configure_formatter
 from .io import read_avro, read_csv, read_json, read_parquet
 from .plan import ExecutionPlan, LogicalPlan
 from .record_batch import RecordBatch, RecordBatchStream
@@ -76,6 +80,8 @@ __all__ = [
     "ExecutionPlan",
     "Expr",
     "LogicalPlan",
+    "ParquetColumnOptions",
+    "ParquetWriterOptions",
     "RecordBatch",
     "RecordBatchStream",
     "RuntimeEnvBuilder",
@@ -87,6 +93,7 @@ __all__ = [
     "TableFunction",
     "WindowFrame",
     "WindowUDF",
+    "catalog",
     "col",
     "column",
     "common",
@@ -130,3 +137,18 @@ def str_lit(value):
 def lit(value) -> Expr:
     """Create a literal expression."""
     return Expr.literal(value)
+
+
+def literal_with_metadata(value: Any, metadata: dict[str, str]) -> Expr:
+    """Creates a new expression representing a scalar value with metadata.
+
+    Args:
+        value: A valid PyArrow scalar value or easily castable to one.
+        metadata: Metadata to attach to the expression.
+    """
+    return Expr.literal_with_metadata(value, metadata)
+
+
+def lit_with_metadata(value: Any, metadata: dict[str, str]) -> Expr:
+    """Alias for literal_with_metadata."""
+    return literal_with_metadata(value, metadata)

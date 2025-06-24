@@ -26,45 +26,114 @@ import datafusion._internal as df_internal
 if TYPE_CHECKING:
     import pyarrow as pa
 
+try:
+    from warnings import deprecated  # Python 3.13+
+except ImportError:
+    from typing_extensions import deprecated  # Python 3.12
+
+
+__all__ = [
+    "Catalog",
+    "Schema",
+    "Table",
+]
+
 
 class Catalog:
     """DataFusion data catalog."""
 
-    def __init__(self, catalog: df_internal.Catalog) -> None:
+    def __init__(self, catalog: df_internal.catalog.RawCatalog) -> None:
         """This constructor is not typically called by the end user."""
         self.catalog = catalog
 
-    def names(self) -> list[str]:
-        """Returns the list of databases in this catalog."""
-        return self.catalog.names()
-
-    def database(self, name: str = "public") -> Database:
-        """Returns the database with the given ``name`` from this catalog."""
-        return Database(self.catalog.database(name))
-
-
-class Database:
-    """DataFusion Database."""
-
-    def __init__(self, db: df_internal.Database) -> None:
-        """This constructor is not typically called by the end user."""
-        self.db = db
+    def __repr__(self) -> str:
+        """Print a string representation of the catalog."""
+        return self.catalog.__repr__()
 
     def names(self) -> set[str]:
-        """Returns the list of all tables in this database."""
-        return self.db.names()
+        """This is an alias for `schema_names`."""
+        return self.schema_names()
+
+    def schema_names(self) -> set[str]:
+        """Returns the list of schemas in this catalog."""
+        return self.catalog.schema_names()
+
+    def schema(self, name: str = "public") -> Schema:
+        """Returns the database with the given ``name`` from this catalog."""
+        schema = self.catalog.schema(name)
+
+        return (
+            Schema(schema)
+            if isinstance(schema, df_internal.catalog.RawSchema)
+            else schema
+        )
+
+    @deprecated("Use `schema` instead.")
+    def database(self, name: str = "public") -> Schema:
+        """Returns the database with the given ``name`` from this catalog."""
+        return self.schema(name)
+
+    def new_in_memory_schema(self, name: str) -> Schema:
+        """Create a new schema in this catalog using an in-memory provider."""
+        self.catalog.new_in_memory_schema(name)
+        return self.schema(name)
+
+    def register_schema(self, name, schema) -> Schema | None:
+        """Register a schema with this catalog."""
+        return self.catalog.register_schema(name, schema)
+
+    def deregister_schema(self, name: str, cascade: bool = True) -> Schema | None:
+        """Deregister a schema from this catalog."""
+        return self.catalog.deregister_schema(name, cascade)
+
+
+class Schema:
+    """DataFusion Schema."""
+
+    def __init__(self, schema: df_internal.catalog.RawSchema) -> None:
+        """This constructor is not typically called by the end user."""
+        self._raw_schema = schema
+
+    def __repr__(self) -> str:
+        """Print a string representation of the schema."""
+        return self._raw_schema.__repr__()
+
+    def names(self) -> set[str]:
+        """This is an alias for `table_names`."""
+        return self.table_names()
+
+    def table_names(self) -> set[str]:
+        """Returns the list of all tables in this schema."""
+        return self._raw_schema.table_names
 
     def table(self, name: str) -> Table:
-        """Return the table with the given ``name`` from this database."""
-        return Table(self.db.table(name))
+        """Return the table with the given ``name`` from this schema."""
+        return Table(self._raw_schema.table(name))
+
+    def register_table(self, name, table) -> None:
+        """Register a table provider in this schema."""
+        return self._raw_schema.register_table(name, table)
+
+    def deregister_table(self, name: str) -> None:
+        """Deregister a table provider from this schema."""
+        return self._raw_schema.deregister_table(name)
+
+
+@deprecated("Use `Schema` instead.")
+class Database(Schema):
+    """See `Schema`."""
 
 
 class Table:
     """DataFusion table."""
 
-    def __init__(self, table: df_internal.Table) -> None:
+    def __init__(self, table: df_internal.catalog.RawTable) -> None:
         """This constructor is not typically called by the end user."""
         self.table = table
+
+    def __repr__(self) -> str:
+        """Print a string representation of the table."""
+        return self.table.__repr__()
 
     @property
     def schema(self) -> pa.Schema:
