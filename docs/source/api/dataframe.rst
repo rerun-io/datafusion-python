@@ -174,7 +174,7 @@ HTML Rendering Customization
 ----------------------------
 
 DataFusion provides extensive customization options for HTML table rendering through the
-``datafusion.html_formatter`` module.
+``datafusion.dataframe_formatter`` module.
 
 Configuring the HTML Formatter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -183,7 +183,7 @@ You can customize how DataFrames are rendered by configuring the formatter:
 
 .. code-block:: python
 
-    from datafusion.html_formatter import configure_formatter
+    from datafusion.dataframe_formatter import configure_formatter
     
     configure_formatter(
         max_cell_length=30,              # Maximum length of cell content before truncation
@@ -206,7 +206,7 @@ For advanced styling needs, you can create a custom style provider class:
 
 .. code-block:: python
 
-    from datafusion.html_formatter import configure_formatter
+    from datafusion.dataframe_formatter import configure_formatter
     
     class CustomStyleProvider:
         def get_cell_style(self) -> str:
@@ -225,7 +225,7 @@ You can register custom formatters for specific data types:
 
 .. code-block:: python
 
-    from datafusion.html_formatter import get_formatter
+    from datafusion.dataframe_formatter import get_formatter
     
     formatter = get_formatter()
     
@@ -285,7 +285,7 @@ The HTML formatter maintains global state that can be managed:
 
 .. code-block:: python
 
-    from datafusion.html_formatter import reset_formatter, reset_styles_loaded_state, get_formatter
+    from datafusion.dataframe_formatter import reset_formatter, reset_styles_loaded_state, get_formatter
     
     # Reset the formatter to default settings
     reset_formatter()
@@ -303,7 +303,7 @@ This example shows how to create a dashboard-like styling for your DataFrames:
 
 .. code-block:: python
 
-    from datafusion.html_formatter import configure_formatter, get_formatter
+    from datafusion.dataframe_formatter import configure_formatter, get_formatter
     
     # Define custom CSS
     custom_css = """
