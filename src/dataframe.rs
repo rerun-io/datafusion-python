@@ -562,8 +562,8 @@ impl PyDataFrame {
         // TODO need to finish plumbing through
         let cols = _args
             .iter()
-            .map(|(table, s)| (Some(table.clone().into()), s.0.clone()))
-            .collect::<Vec<(Option<TableReference>, Field)>>();
+            .map(|(table, s)| (Some(&table.table_reference), &s.0))
+            .collect::<Vec<(Option<&TableReference>, &Field)>>();
         let df = self.df.as_ref().clone().drop_qualified_columns(&cols)?;
         Ok(Self::new(df))
     }
