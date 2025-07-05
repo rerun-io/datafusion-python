@@ -40,6 +40,7 @@ except ImportError:
 from datafusion._internal import DataFrame as DataFrameInternal
 from datafusion._internal import ParquetColumnOptions as ParquetColumnOptionsInternal
 from datafusion._internal import ParquetWriterOptions as ParquetWriterOptionsInternal
+from datafusion.common import TableReference
 from datafusion.expr import Expr, SortExpr, sort_or_default
 from datafusion.plan import ExecutionPlan, LogicalPlan
 from datafusion.record_batch import RecordBatchStream
@@ -1156,3 +1157,25 @@ class DataFrame:
             - For columns not in subset, the original column is kept unchanged
         """
         return DataFrame(self.df.fill_null(value, subset))
+
+    def fully_qualified_name(self, col: str) -> tuple[TableReference, pa.Field]:
+        """Get the fully qualified name of a column in the DataFrame.
+
+        Args:
+            col: The column name to get the fully qualified name for.
+
+        Returns:
+            Fully qualified column name as a string.
+        """
+        return self.df.fully_qualified_name(col)
+
+    def _drop(self, *qualified_columns: tuple[TableReference, pa.Field]) -> DataFrame:
+        """Drop columns from the DataFrame using fully qualified names.
+
+        Args:
+            qualified_columns: Fully qualified column names to drop.
+
+        Returns:
+            DataFrame with specified columns removed.
+        """
+        return DataFrame(self.df._drop(*qualified_columns))

@@ -272,6 +272,21 @@ def test_drop(df):
     assert result.column(1) == pa.array([4, 5, 6])
 
 
+def test__drop(df):
+    # TODO: implement deep copy for DataFrame?
+    ctx = SessionContext()
+
+    # create a RecordBatch and a new DataFrame from it
+    batch = pa.RecordBatch.from_arrays(
+        [pa.array([1, 2, 3]), pa.array([4, 5, 6]), pa.array([8, 5, 8])],
+        names=["a", "d", "e"],
+    )
+
+    other_df = ctx.from_arrow(batch)
+    df = df.join(other_df, on="a")._drop(df.fully_qualified_name("a"))
+    assert len(df.schema().names) == len(other_df.schema().names) * 2 - 1
+
+
 def test_limit(df):
     df = df.limit(1)
 

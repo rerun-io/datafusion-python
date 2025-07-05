@@ -21,14 +21,14 @@ use std::sync::Arc;
 
 use arrow::array::{new_null_array, RecordBatch, RecordBatchIterator, RecordBatchReader};
 use arrow::compute::can_cast_types;
+use arrow::datatypes::Field;
 use arrow::error::ArrowError;
 use arrow::ffi::FFI_ArrowSchema;
 use arrow::ffi_stream::FFI_ArrowArrayStream;
-use arrow::pyarrow::FromPyArrow;
 use datafusion::arrow::datatypes::Schema;
-use datafusion::arrow::pyarrow::{PyArrowType, ToPyArrow};
+use datafusion::arrow::pyarrow::{FromPyArrow, PyArrowType, ToPyArrow};
 use datafusion::arrow::util::pretty;
-use datafusion::common::UnnestOptions;
+use datafusion::common::{TableReference, UnnestOptions};
 use datafusion::config::{CsvOptions, ParquetColumnOptions, ParquetOptions, TableParquetOptions};
 use datafusion::dataframe::{DataFrame, DataFrameWriteOptions};
 use datafusion::datasource::TableProvider;
@@ -45,6 +45,7 @@ use pyo3::types::{PyCapsule, PyList, PyTuple, PyTupleMethods};
 use tokio::task::JoinHandle;
 
 use crate::catalog::PyTable;
+use crate::common::table_reference::PyTableReference;
 use crate::errors::{py_datafusion_err, to_datafusion_err, PyDataFusionError};
 use crate::expr::sort_expr::to_sort_expressions;
 use crate::physical_plan::PyExecutionPlan;
@@ -57,6 +58,81 @@ use crate::{
     errors::PyDataFusionResult,
     expr::{sort_expr::PySortExpr, PyExpr},
 };
+
+/// A wrapper around Arc<str> that implements PyO3 traits for easier Python interop
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PyArcStr(Arc<str>);
+
+impl PyArcStr {
+    pub fn new(s: &str) -> Self {
+        Self(Arc::from(s))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub fn into_arc(self) -> Arc<str> {
+        self.0
+    }
+}
+
+impl From<Arc<str>> for PyArcStr {
+    fn from(arc: Arc<str>) -> Self {
+        Self(arc)
+    }
+}
+
+impl From<PyArcStr> for Arc<str> {
+    fn from(py_arc: PyArcStr) -> Self {
+        py_arc.0
+    }
+}
+
+impl From<&str> for PyArcStr {
+    fn from(s: &str) -> Self {
+        Self::new(s)
+    }
+}
+
+impl From<String> for PyArcStr {
+    fn from(s: String) -> Self {
+        Self(Arc::from(s))
+    }
+}
+
+impl std::fmt::Display for PyArcStr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl<'py> pyo3::IntoPyObject<'py> for PyArcStr {
+    type Target = pyo3::types::PyString;
+    type Output = pyo3::Bound<'py, Self::Target>;
+    type Error = std::convert::Infallible;
+
+    fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
+        Ok(pyo3::types::PyString::new(py, &self.0))
+    }
+}
+
+impl<'py> pyo3::IntoPyObject<'py> for &PyArcStr {
+    type Target = pyo3::types::PyString;
+    type Output = pyo3::Bound<'py, Self::Target>;
+    type Error = std::convert::Infallible;
+
+    fn into_pyobject(self, py: pyo3::Python<'py>) -> Result<Self::Output, Self::Error> {
+        Ok(pyo3::types::PyString::new(py, &self.0))
+    }
+}
+
+impl<'py> pyo3::FromPyObject<'py> for PyArcStr {
+    fn extract_bound(ob: &pyo3::Bound<'py, pyo3::PyAny>) -> pyo3::PyResult<Self> {
+        let s: String = ob.extract()?;
+        Ok(Self::new(&s))
+    }
+}
 
 // https://github.com/apache/datafusion-python/pull/1016#discussion_r1983239116
 // - we have not decided on the table_provider approach yet
@@ -428,6 +504,17 @@ impl PyDataFrame {
         PyArrowType(self.df.schema().into())
     }
 
+    fn fully_qualified_name(&self, col: &str) -> PyResult<(PyTableReference, PyArrowType<Field>)> {
+        let result = self.df.schema().qualified_field_with_unqualified_name(col);
+        match result {
+            Ok(parts) => Ok((parts.0.unwrap().clone().into(), parts.1.clone().into())),
+            Err(err) => Err(PyValueError::new_err(format!(
+                "Error: {:?}",
+                err.to_string()
+            ))),
+        }
+    }
+
     /// Convert this DataFrame into a Table that can be used in register_table
     /// By convention, into_... methods consume self and return the new object.
     /// Disabling the clippy lint, so we can use &self
@@ -464,6 +551,20 @@ impl PyDataFrame {
     fn drop(&self, args: Vec<PyBackedStr>) -> PyDataFusionResult<Self> {
         let cols = args.iter().map(|s| s.as_ref()).collect::<Vec<&str>>();
         let df = self.df.as_ref().clone().drop_columns(&cols)?;
+        Ok(Self::new(df))
+    }
+
+    #[pyo3(signature = (*_args))]
+    fn _drop(
+        &self,
+        _args: Vec<(PyTableReference, PyArrowType<Field>)>,
+    ) -> PyDataFusionResult<Self> {
+        // TODO need to finish plumbing through
+        let cols = _args
+            .iter()
+            .map(|(table, s)| (Some(table.clone().into()), s.0.clone()))
+            .collect::<Vec<(Option<TableReference>, Field)>>();
+        let df = self.df.as_ref().clone().drop_qualified_columns(&cols)?;
         Ok(Self::new(df))
     }
 

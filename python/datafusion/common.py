@@ -34,6 +34,7 @@ SqlTable = common_internal.SqlTable
 SqlType = common_internal.SqlType
 SqlView = common_internal.SqlView
 TableType = common_internal.TableType
+TableReference = common_internal.TableReference
 TableSource = common_internal.TableSource
 Constraints = common_internal.Constraints
 
@@ -51,6 +52,7 @@ __all__ = [
     "SqlTable",
     "SqlType",
     "SqlView",
+    "TableReference",
     "TableSource",
     "TableType",
 ]

@@ -21,6 +21,7 @@ pub mod data_type;
 pub mod df_schema;
 pub mod function;
 pub mod schema;
+pub mod table_reference;
 
 /// Initializes the `common` module to match the pattern of `datafusion-common` https://docs.rs/datafusion-common/18.0.0/datafusion_common/index.html
 pub(crate) fn init_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -39,5 +40,6 @@ pub(crate) fn init_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<schema::PyTableType>()?;
     m.add_class::<schema::PyTableSource>()?;
     m.add_class::<schema::PyConstraints>()?;
+    m.add_class::<table_reference::PyTableReference>()?;
     Ok(())
 }
