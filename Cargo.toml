@@ -38,11 +38,11 @@ tokio = { version = "1.47", features = ["macros", "rt", "rt-multi-thread", "sync
 pyo3 = { version = "0.25", features = ["extension-module", "abi3", "abi3-py39"] }
 pyo3-async-runtimes = { version = "0.25", features = ["tokio-runtime"]}
 pyo3-log = "0.12.4"
-arrow = { version = "56", features = ["pyarrow"] }
-datafusion = { version = "50", features = ["avro", "unicode_expressions"] }
-datafusion-substrait = { version = "50", optional = true }
-datafusion-proto = { version = "50" }
-datafusion-ffi = { version = "50" }
+arrow = { version = "56.0.0", features = ["pyarrow"] }
+datafusion = { version = "50.0.0", features = ["avro", "unicode_expressions"] }
+datafusion-substrait = { version = "50.0.0", optional = true }
+datafusion-proto = { version = "50.0.0" }
+datafusion-ffi = { version = "50.0.0" }
 prost = "0.13.1" # keep in line with `datafusion-substrait`
 uuid = { version = "1.18", features = ["v4"] }
 mimalloc = { version = "0.1", optional = true, default-features = false, features = ["local_dynamic_tls"] }
@@ -63,3 +63,39 @@ crate-type = ["cdylib", "rlib"]
 [profile.release]
 lto = true
 codegen-units = 1
+
+[patch.crates-io]
+datafusion = { path = "../arrow-datafusion/datafusion/core" }
+datafusion-substrait = { path = "../arrow-datafusion/datafusion/substrait" }
+datafusion-proto = { path = "../arrow-datafusion/datafusion/proto" }
+datafusion-ffi = { path = "../arrow-datafusion/datafusion/ffi" }
+
+# Patch all arrow crates to use local versions
+arrow = { path = "../arrow-rs/arrow" }
+arrow-array = { path = "../arrow-rs/arrow-array" }
+arrow-arith = { path = "../arrow-rs/arrow-arith" }
+arrow-buffer = { path = "../arrow-rs/arrow-buffer" }
+arrow-cast = { path = "../arrow-rs/arrow-cast" }
+arrow-csv = { path = "../arrow-rs/arrow-csv" }
+arrow-data = { path = "../arrow-rs/arrow-data" }
+arrow-ipc = { path = "../arrow-rs/arrow-ipc" }
+arrow-json = { path = "../arrow-rs/arrow-json" }
+arrow-ord = { path = "../arrow-rs/arrow-ord" }
+arrow-row = { path = "../arrow-rs/arrow-row" }
+arrow-schema = { path = "../arrow-rs/arrow-schema" }
+arrow-select = { path = "../arrow-rs/arrow-select" }
+arrow-string = { path = "../arrow-rs/arrow-string" }
+
+# Also patch all datafusion subcrates that might have their own arrow dependencies
+datafusion-catalog = { path = "../arrow-datafusion/datafusion/catalog" }
+datafusion-common = { path = "../arrow-datafusion/datafusion/common" }
+datafusion-datasource = { path = "../arrow-datafusion/datafusion/datasource" }
+datafusion-execution = { path = "../arrow-datafusion/datafusion/execution" }
+datafusion-expr = { path = "../arrow-datafusion/datafusion/expr" }
+datafusion-physical-expr = { path = "../arrow-datafusion/datafusion/physical-expr" }
+datafusion-physical-plan = { path = "../arrow-datafusion/datafusion/physical-plan" }
+datafusion-sql = { path = "../arrow-datafusion/datafusion/sql" }
+
+# Additional arrow subcrates that might be causing conflicts
+arrow-flight = { path = "../arrow-rs/arrow-flight" }
+parquet = { path = "../arrow-rs/parquet" }
